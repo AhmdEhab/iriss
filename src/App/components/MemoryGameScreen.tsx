@@ -18,7 +18,7 @@ interface CardItem {
 const EMOJI_POOL = ['🍎', '🐶', '🚗', '☀️', '🦁', '🐘', '🍦', '🚀', '🌈', '🎨', '🍕', '🎸', '🧸', '🎈', '🍭', '🐱'];
 
 export function MemoryGameScreen() {
-    const { navigateTo, unlockBadge, incrementProgress } = useApp();
+    const { navigateTo, unlockBadge, incrementProgress, activeRules } = useApp();
     const { playSound, speak } = useAudio();
     const { t, language } = useLanguage();
 
@@ -27,7 +27,10 @@ export function MemoryGameScreen() {
     const [moves, setMoves] = useState(0);
     const [matches, setMatches] = useState(0);
     const [isGameOver, setIsGameOver] = useState(false);
-    const [difficulty, setDifficulty] = useState<4 | 6 | 8>(6);
+
+    // Default difficulty based on research (DS/FXS often prefer 4 pairs initially)
+    const initialDifficulty = activeRules?.repetitionFrequency === 'high' ? 4 : 6;
+    const [difficulty, setDifficulty] = useState<4 | 6 | 8>(initialDifficulty as any);
     const [isProcessing, setIsProcessing] = useState(false);
 
     const initGame = useCallback(() => {
@@ -129,24 +132,24 @@ export function MemoryGameScreen() {
     };
 
     return (
-        <div className="min-h-screen bg-transparent p-4 overflow-hidden relative">
+        <div className={`min-h-screen p-4 overflow-hidden relative transition-colors duration-500 ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-50' : 'bg-transparent'}`}>
             <BackButton onClick={handleBack} />
             <div className="max-w-6xl mx-auto py-8 h-full flex flex-col relative z-10">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <div className="w-24" />
-                    <h1 className="text-6xl font-black text-emerald-700 drop-shadow-xl text-center flex-1">
+                    <h1 className={`text-6xl font-black drop-shadow-xl text-center flex-1 ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-slate-600' : 'text-emerald-700'}`}>
                         {t.memoryGame} 🧩
                     </h1>
 
-                    <Card className="flex gap-6 bg-white/90 backdrop-blur-md p-5 rounded-[2rem] shadow-2xl border-4 border-emerald-100">
-                        <div className="text-center px-4 border-e-4 border-emerald-50">
-                            <p className="text-sm font-black uppercase text-emerald-600 tracking-widest">{language === 'ar' ? 'الحركات' : 'Moves'}</p>
-                            <p className="text-4xl font-black text-emerald-700">{moves}</p>
+                    <Card className={`flex gap-6 backdrop-blur-md p-5 rounded-[2rem] shadow-2xl border-4 ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-white border-slate-100' : 'bg-white/90 border-emerald-100'}`}>
+                        <div className={`text-center px-4 border-e-4 ${activeRules?.sensoryProfile === 'low-arousal' ? 'border-slate-50' : 'border-emerald-50'}`}>
+                            <p className={`text-sm font-black uppercase tracking-widest ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-slate-500' : 'text-emerald-600'}`}>{language === 'ar' ? 'الحركات' : 'Moves'}</p>
+                            <p className={`text-4xl font-black ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-slate-700' : 'text-emerald-700'}`}>{moves}</p>
                         </div>
                         <div className="text-center px-4">
-                            <p className="text-sm font-black uppercase text-emerald-600 tracking-widest">{language === 'ar' ? 'الأزواج' : 'Matches'}</p>
-                            <p className="text-4xl font-black text-emerald-700">{matches}/{difficulty}</p>
+                            <p className={`text-sm font-black uppercase tracking-widest ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-slate-500' : 'text-emerald-600'}`}>{language === 'ar' ? 'الأزواج' : 'Matches'}</p>
+                            <p className={`text-4xl font-black ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-slate-700' : 'text-emerald-700'}`}>{matches}/{difficulty}</p>
                         </div>
                     </Card>
                 </div>
@@ -176,11 +179,20 @@ export function MemoryGameScreen() {
                                         {/* Front (Hidden) */}
                                         <Card className={`
                                             absolute inset-0 backface-hidden border-8 border-white shadow-3xl
-                                            bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-600 
+                                            ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-200' : 'bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-600'} 
                                             flex items-center justify-center rounded-[2.5rem]
                                             group-hover:shadow-emerald-200/50 transition-shadow
                                         `}>
-                                            <Brain className="size-20 text-white/40 animate-pulse" />
+                                            <Brain className={`size-20 animate-pulse ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-slate-400' : 'text-white/40'}`} />
+
+                                            {/* Visual Hint (Ghosting) for Syndrome Support */}
+                                            {activeRules?.gameAdjustments?.memoryGameHints && !card.isMatched && (
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-[0.05] pointer-events-none">
+                                                    <span className="text-[6rem] grayscale">
+                                                        {card.emoji}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </Card>
 
                                         {/* Back (Emoji) */}
@@ -188,7 +200,7 @@ export function MemoryGameScreen() {
                                             absolute inset-0 backface-hidden border-8 border-white shadow-3xl
                                             bg-white flex items-center justify-center rounded-[2.5rem]
                                             rotate-y-180 transition-colors
-                                            ${card.isMatched ? 'bg-emerald-50 border-emerald-400' : ''}
+                                            ${card.isMatched ? (activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-50 border-slate-300' : 'bg-emerald-50 border-emerald-400') : ''}
                                         `}>
                                             <span className={`text-[6rem] sm:text-[8rem] ${card.isMatched ? 'scale-110 drop-shadow-lg' : ''}`}>
                                                 {card.emoji}

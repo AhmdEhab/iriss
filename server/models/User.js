@@ -34,12 +34,36 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    dateOfBirth: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    country: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    city: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     // Additional fields for child profile
     motherName: {
         type: DataTypes.STRING,
         allowNull: true
     },
+    motherJob: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     fatherName: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    fatherJob: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    phone: {
         type: DataTypes.STRING,
         allowNull: true
     },

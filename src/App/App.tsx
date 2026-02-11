@@ -32,6 +32,8 @@ import { BodyPartsScreen } from './components/BodyPartsScreen';
 import { FamilyGuidanceScreen } from './components/FamilyGuidanceScreen';
 import { CommunitySessionsScreen } from './components/CommunitySessionsScreen';
 import { ParentSettingsScreen } from './components/ParentSettingsScreen';
+import { TransitionScreen } from './components/TransitionScreen';
+import { SyndromeTeachingDemoScreen } from './components/SyndromeTeachingDemoScreen';
 import { PlayfulBackground } from './components/ui/PlayfulBackground';
 
 
@@ -46,7 +48,7 @@ function AppContent() {
       'ai-assessment', 'child-mode', 'stories', 'animals', 'letters',
       'numbers', 'colors', 'life-skills', 'songs', 'drawing',
       'shapes', 'fruits', 'vehicles', 'memory-game', 'balloon-pop',
-      'shadow-match', 'games-hub', 'body-parts', 'emotions'
+      'shadow-match', 'games-hub', 'body-parts', 'emotions', 'teaching-demo'
     ];
 
     const isChildScreen = childScreens.includes(currentScreen);
@@ -146,6 +148,10 @@ function AppContent() {
         return <CommunitySessionsScreen key="community-sessions" />;
       case 'parent-settings':
         return <ParentSettingsScreen key="parent-settings" />;
+      case 'transition':
+        return <TransitionScreen key="transition" />;
+      case 'teaching-demo':
+        return <SyndromeTeachingDemoScreen key="teaching-demo" />;
       default:
         return <SplashScreen key="default" />;
     }

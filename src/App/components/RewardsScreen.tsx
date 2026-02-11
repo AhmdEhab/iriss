@@ -8,7 +8,7 @@ import { Card } from './ui/card';
 import { BackButton } from './ui/BackButton';
 
 export function RewardsScreen() {
-    const { navigateTo, earnedBadges, childProfile } = useApp();
+    const { navigateTo, earnedBadges, childProfile, activeRules } = useApp();
     const { playSound, speak } = useAudio();
     const { t, language } = useLanguage();
 
@@ -86,14 +86,20 @@ export function RewardsScreen() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-blue-50 p-4">
+        <div className={`min-h-screen p-4 transition-colors duration-500 ${activeRules?.sensoryProfile === 'low-arousal'
+                ? 'bg-slate-50'
+                : 'bg-gradient-to-br from-yellow-50 via-white to-blue-50'
+            }`}>
             <BackButton onClick={handleBack} />
             <div className="max-w-6xl mx-auto py-8">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-12">
                     <div className="w-24" />
                     <div className="text-center flex-1">
-                        <h1 className="text-6xl font-black text-yellow-600 drop-shadow-lg mb-2">
+                        <h1 className={`text-6xl font-black drop-shadow-lg mb-2 ${activeRules?.sensoryProfile === 'low-arousal'
+                                ? 'text-slate-600'
+                                : 'text-yellow-600'
+                            }`}>
                             {t.rewards} 🏆
                         </h1>
                         <p className="text-2xl text-gray-500 font-medium">

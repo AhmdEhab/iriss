@@ -8,7 +8,7 @@ import { Card } from './ui/card';
 import { BackButton } from './ui/BackButton';
 
 export function GamesHubScreen() {
-    const { navigateTo } = useApp();
+    const { navigateTo, activeRules } = useApp();
     const { playSound, speak } = useAudio();
     const { t, language } = useLanguage();
 
@@ -64,13 +64,19 @@ export function GamesHubScreen() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-white to-pink-100 p-4">
+        <div className={`min-h-screen p-4 transition-colors duration-500 ${activeRules?.sensoryProfile === 'low-arousal'
+                ? 'bg-slate-50'
+                : 'bg-gradient-to-br from-purple-100 via-white to-pink-100'
+            }`}>
             <BackButton onClick={handleBack} />
             <div className="max-w-6xl mx-auto py-8">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-12">
                     <div className="w-24" />
-                    <h1 className="text-6xl font-black text-purple-700 drop-shadow-lg text-center flex-1">
+                    <h1 className={`text-6xl font-black drop-shadow-lg text-center flex-1 ${activeRules?.sensoryProfile === 'low-arousal'
+                            ? 'text-slate-600'
+                            : 'text-purple-700'
+                        }`}>
                         {t.gamesHub} 🎮
                     </h1>
                     <div className="w-24" />

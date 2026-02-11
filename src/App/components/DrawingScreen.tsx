@@ -9,7 +9,7 @@ import { Card } from './ui/card';
 import { BackButton } from './ui/BackButton';
 
 export function DrawingScreen() {
-    const { navigateTo, incrementProgress } = useApp();
+    const { navigateTo, incrementProgress, activeRules } = useApp();
     const { speak, playSound } = useAudio();
     const { t, language } = useLanguage();
 
@@ -98,12 +98,18 @@ export function DrawingScreen() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-yellow-100 p-4 overflow-hidden">
+        <div className={`min-h-screen p-4 overflow-hidden transition-colors duration-500 ${activeRules?.sensoryProfile === 'low-arousal'
+                ? 'bg-slate-50'
+                : 'bg-gradient-to-br from-blue-100 via-white to-yellow-100'
+            }`}>
             <BackButton onClick={handleBack} />
             <div className="max-w-7xl mx-auto h-[calc(100vh-2rem)] flex flex-col">
                 <div className="flex justify-between items-center mb-6">
                     <div className="w-24" />
-                    <h1 className="text-4xl md:text-5xl font-bold text-pink-600 drop-shadow-lg text-center flex-1">
+                    <h1 className={`text-4xl md:text-5xl font-bold drop-shadow-lg text-center flex-1 ${activeRules?.sensoryProfile === 'low-arousal'
+                            ? 'text-slate-600'
+                            : 'text-pink-600'
+                        }`}>
                         {t.drawing} 🎨
                     </h1>
                     <div className="flex gap-4">

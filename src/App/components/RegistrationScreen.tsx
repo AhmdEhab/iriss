@@ -10,7 +10,7 @@ import { Card } from './ui/card';
 import { BackButton } from './ui/BackButton';
 
 export function RegistrationScreen() {
-  const { registerUser, navigateTo } = useApp();
+  const { registerUser, navigateTo, startTransition } = useApp();
   const { speak, playSound } = useAudio();
   const { t, language, dir } = useLanguage();
 
@@ -83,7 +83,8 @@ export function RegistrationScreen() {
       if (success) {
         playSound('success');
         speak(language === 'ar' ? 'تم التسجيل بنجاح! أهلاً بك يا بطل.' : 'Registration successful! Welcome, hero.', language);
-        navigateTo('ai-assessment');
+        // Navigate to assessment with transition
+        startTransition(t.selectingIQ, 'ai-assessment', 3000);
       } else {
         speak(language === 'ar' ? 'حدث خطأ في التسجيل. يرجى التأكد من البيانات.' : 'Registration error. Please check your data.', language);
         playSound('error');

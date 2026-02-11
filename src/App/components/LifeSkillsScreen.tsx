@@ -25,11 +25,12 @@ interface LifeSkill {
 }
 
 export function LifeSkillsScreen() {
-    const { navigateTo, incrementProgress } = useApp();
+    const { navigateTo, incrementProgress, activeRules } = useApp();
     const { speak, playSound, stopSpeaking } = useAudio();
     const { t, language, dir } = useLanguage();
     const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [journeyStep, setJourneyStep] = useState(-1); // -1: Overview, 0..N: Specific Step Focus
 
     const skills: LifeSkill[] = [
         {
@@ -96,6 +97,8 @@ export function LifeSkillsScreen() {
         playSound('tap');
         stopSpeaking();
         setIsPlaying(false);
+        setJourneyStep(-1);
+        setSelectedSkillId(null);
         navigateTo('child-mode');
     };
 
@@ -103,10 +106,27 @@ export function LifeSkillsScreen() {
 
     const handleSkillSelect = (skill: LifeSkill) => {
         playSound('tap');
-        const title = language === 'ar' ? skill.titleAr : skill.titleEn;
-        speak(title, language);
         setSelectedSkillId(skill.id);
         setIsPlaying(false);
+
+        const style = activeRules?.instructionStyle || 'object-first';
+
+        if (style === 'whole-scene') {
+            // Fragile X: Show Overview (Timeline) first
+            setJourneyStep(-1);
+            const title = language === 'ar' ? skill.titleAr : skill.titleEn;
+            speak(`${title}. ${language === 'ar' ? 'لنرَ الخطوات معاً' : 'Let\'s see the steps together.'}`, language);
+        } else if (style === 'object-first') {
+            // Down Syndrome: Focus on Step 1 immediately
+            setJourneyStep(0);
+            const stepText = language === 'ar' ? skill.steps[0].textAr : skill.steps[0].textEn;
+            speak(stepText, language);
+        } else {
+            // Williams / Default: Narrative Intro then steps
+            setJourneyStep(-1);
+            const title = language === 'ar' ? skill.titleAr : skill.titleEn;
+            speak(`${title}.`, language);
+        }
     };
 
     const handlePlayInstructions = () => {
@@ -115,59 +135,68 @@ export function LifeSkillsScreen() {
             setIsPlaying(false);
             playSound('tap');
         } else if (selectedSkill) {
-            const title = language === 'ar' ? selectedSkill.titleAr : selectedSkill.titleEn;
-            const stepsText = selectedSkill.steps.map((step, i) =>
-                `${language === 'ar' ? 'الخطوة' : 'Step'} ${i + 1}: ${language === 'ar' ? step.textAr : step.textEn}`
-            ).join('. ');
-            const tip = language === 'ar' ? selectedSkill.tipAr : selectedSkill.tipEn;
-
-            speak(`${title}. ${stepsText}. ${language === 'ar' ? 'نصيحة مهمة' : 'Important tip'}: ${tip}`, language);
+            if (journeyStep === -1) {
+                // Play all steps summary
+                const title = language === 'ar' ? selectedSkill.titleAr : selectedSkill.titleEn;
+                const stepsText = selectedSkill.steps.map((step, i) =>
+                    `${language === 'ar' ? 'الخطوة' : 'Step'} ${i + 1}: ${language === 'ar' ? step.textAr : step.textEn}`
+                ).join('. ');
+                speak(`${title}. ${stepsText}.`, language);
+            } else {
+                // Play current step only
+                const step = selectedSkill.steps[journeyStep];
+                const text = language === 'ar' ? step.textAr : step.textEn;
+                speak(text, language);
+            }
             setIsPlaying(true);
             playSound('success');
         }
     };
 
+    const handleNextStep = () => {
+        if (!selectedSkill) return;
+        if (journeyStep < selectedSkill.steps.length - 1) {
+            const nextStep = journeyStep + 1;
+            setJourneyStep(nextStep);
+            playSound('tap');
+            const step = selectedSkill.steps[nextStep];
+            speak(language === 'ar' ? step.textAr : step.textEn, language);
+        } else {
+            // Done
+            setJourneyStep(-1); // Back to overview or finish
+            playSound('success');
+        }
+    };
+
+    const handlePrevStep = () => {
+        if (journeyStep > 0) {
+            const prevStep = journeyStep - 1;
+            setJourneyStep(prevStep);
+            playSound('tap');
+        } else {
+            setJourneyStep(-1); // Back to overview
+            playSound('tap');
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-yellow-100 p-4">
+        <div className={`min-h-screen p-4 transition-colors duration-500 ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-50' : 'bg-gradient-to-br from-blue-100 via-white to-yellow-100'}`}>
             <BackButton onClick={handleBack} />
             <div className="max-w-6xl mx-auto py-8">
-                {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <div className="w-24" />
-                    <h1 className="text-5xl font-bold text-indigo-700 drop-shadow-lg text-center flex-1">
+                    <h1 className={`text-5xl font-bold drop-shadow-lg text-center flex-1 ${activeRules?.sensoryProfile === 'low-arousal' ? 'text-indigo-800' : 'text-indigo-700'}`}>
                         {language === 'ar' ? 'عادات صحية' : 'Healthy Habits'} 🏠
                     </h1>
                     <div className="w-24" />
                 </div>
 
                 {!selectedSkillId ? (
-                    /* Grid View */
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6"
-                    >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                         {skills.map((skill, index) => (
-                            <motion.div
-                                key={skill.id}
-                                initial={{ x: index % 2 === 0 ? -100 : 100, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                transition={{ delay: index * 0.1, type: 'spring' }}
-                                whileHover={{ scale: 1.02 }}
-                            >
-                                <button
-                                    onClick={() => handleSkillSelect(skill)}
-                                    className={`
-                                        w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden
-                                        flex items-center p-8 gap-8 border-4 border-white transition-all
-                                        hover:shadow-3xl group
-                                    `}
-                                >
-                                    <div className={`
-                                        size-24 rounded-2xl bg-gradient-to-br ${skill.color}
-                                        flex items-center justify-center text-5xl shadow-inner flex-shrink-0
-                                        group-hover:scale-110 transition-transform
-                                    `}>
+                            <motion.div key={skill.id} initial={{ x: index % 2 === 0 ? -100 : 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: index * 0.1, type: 'spring' }} whileHover={{ scale: 1.02 }}>
+                                <button onClick={() => handleSkillSelect(skill)} className={`w-full ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-100' : 'bg-white'} rounded-[2.5rem] shadow-2xl overflow-hidden flex items-center p-8 gap-8 border-4 border-white transition-all hover:shadow-3xl group`}>
+                                    <div className={`size-24 rounded-2xl bg-gradient-to-br ${activeRules?.sensoryProfile === 'low-arousal' ? 'from-slate-300 to-slate-400' : skill.color} flex items-center justify-center text-5xl shadow-inner flex-shrink-0 group-hover:scale-110 transition-transform`}>
                                         {skill.emoji}
                                     </div>
                                     <div className="text-left flex-1">
@@ -186,20 +215,11 @@ export function LifeSkillsScreen() {
                         ))}
                     </motion.div>
                 ) : (
-                    /* Detail View */
-                    <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="max-w-4xl mx-auto"
-                    >
+                    <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-4xl mx-auto">
                         {selectedSkill && (
-                            <Card className="overflow-hidden rounded-[3rem] shadow-2xl border-8 border-white bg-white">
-                                <div className={`bg-gradient-to-r ${selectedSkill.color} p-12 text-center text-white relative`}>
-                                    <motion.div
-                                        animate={{ scale: isPlaying ? [1, 1.1, 1] : 1 }}
-                                        transition={{ duration: 2, repeat: isPlaying ? Infinity : 0 }}
-                                        className="text-[8rem] mb-6 drop-shadow-2xl"
-                                    >
+                            <Card className={`overflow-hidden rounded-[3rem] shadow-2xl border-8 border-white ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-50' : 'bg-white'}`}>
+                                <div className={`bg-gradient-to-r ${activeRules?.sensoryProfile === 'low-arousal' ? 'from-slate-400 to-slate-500' : selectedSkill.color} p-12 text-center text-white relative`}>
+                                    <motion.div animate={{ scale: isPlaying ? [1, 1.1, 1] : 1 }} transition={{ duration: 2, repeat: isPlaying ? Infinity : 0 }} className="text-[8rem] mb-6 drop-shadow-2xl">
                                         {selectedSkill.emoji}
                                     </motion.div>
                                     <h2 className="text-6xl font-black drop-shadow-lg">
@@ -207,84 +227,72 @@ export function LifeSkillsScreen() {
                                     </h2>
                                 </div>
 
-                                <div className="p-10 space-y-8">
-                                    <div className="grid gap-6">
-                                        {selectedSkill.steps.map((step, i) => (
-                                            <motion.div
-                                                key={i}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: 0.1 * i }}
-                                                className="flex items-start gap-6 p-6 rounded-3xl bg-gray-50 border-2 border-gray-100 shadow-sm"
-                                            >
-                                                <div className={`
-                                                    size-12 rounded-full bg-gradient-to-br ${selectedSkill.color}
-                                                    flex items-center justify-center text-2xl font-black text-white shadow-md flex-shrink-0
-                                                `}>
-                                                    {i + 1}
-                                                </div>
-                                                <p className="text-2xl font-bold text-gray-700 leading-relaxed">
-                                                    {language === 'ar' ? step.textAr : step.textEn}
-                                                </p>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-
-                                    <motion.div
-                                        initial={{ scale: 0.9, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        className="bg-yellow-50 border-4 border-yellow-100 rounded-[2rem] p-8 flex items-center gap-6 shadow-inner"
-                                    >
-                                        <div className="text-5xl flex-shrink-0 animate-bounce">💡</div>
-                                        <div>
-                                            <h4 className="text-sm font-black text-yellow-700 uppercase tracking-widest mb-1">
-                                                {language === 'ar' ? 'نصيحة ذكية' : 'Smart Tip'}
-                                            </h4>
-                                            <p className="text-2xl text-yellow-800 font-bold italic leading-tight">
-                                                {language === 'ar' ? selectedSkill.tipAr : selectedSkill.tipEn}
-                                            </p>
+                                <div className="p-10 space-y-8 min-h-[400px]">
+                                    {journeyStep === -1 ? (
+                                        // Overview Mode (Timeline) - Fragile X Preference
+                                        <div className="grid gap-6">
+                                            {selectedSkill.steps.map((step, i) => (
+                                                <motion.button
+                                                    key={i}
+                                                    onClick={() => { setJourneyStep(i); const text = language === 'ar' ? step.textAr : step.textEn; speak(text, language); }}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: 0.1 * i }}
+                                                    className={`flex items-start gap-6 p-6 rounded-3xl border-2 shadow-sm text-left hover:bg-indigo-50 transition-colors w-full ${activeRules?.sensoryProfile === 'low-arousal' ? 'bg-slate-100 border-slate-200' : 'bg-gray-50 border-gray-100'}`}
+                                                >
+                                                    <div className={`size-12 rounded-full bg-gradient-to-br ${activeRules?.sensoryProfile === 'low-arousal' ? 'from-slate-300 to-slate-400' : selectedSkill.color} flex items-center justify-center text-2xl font-black text-white shadow-md flex-shrink-0`}>
+                                                        {i + 1}
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-gray-700 leading-relaxed">
+                                                        {language === 'ar' ? step.textAr : step.textEn}
+                                                    </p>
+                                                </motion.button>
+                                            ))}
                                         </div>
-                                    </motion.div>
+                                    ) : (
+                                        // Focus Mode (One Step) - Down Syndrome Preference
+                                        <motion.div
+                                            key={journeyStep}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="flex flex-col items-center justify-center p-10 rounded-[3rem] bg-indigo-50 border-4 border-indigo-100 h-full"
+                                        >
+                                            <div className="text-9xl font-black text-indigo-200 mb-6">
+                                                {journeyStep + 1}
+                                            </div>
+                                            <p className="text-4xl font-black text-indigo-900 text-center leading-relaxed">
+                                                {language === 'ar' ? selectedSkill.steps[journeyStep].textAr : selectedSkill.steps[journeyStep].textEn}
+                                            </p>
+                                        </motion.div>
+                                    )}
                                 </div>
 
                                 <div className="flex justify-center gap-6 p-10 pt-4 bg-gray-50/50">
-                                    <Button
-                                        onClick={handlePlayInstructions}
-                                        size="lg"
-                                        className={`
-                                            px-12 py-10 rounded-full text-2xl font-black shadow-xl border-4 border-white
-                                            bg-gradient-to-r ${selectedSkill.color} text-white
-                                        `}
-                                    >
+                                    {(journeyStep > -1 || activeRules?.instructionStyle === 'object-first') && (
+                                        <Button onClick={handlePrevStep} variant="outline" size="lg" className="bg-white text-xl px-8 rounded-full shadow-lg border-2 border-slate-200">
+                                            {language === 'ar' ? 'السابق' : 'Prev'}
+                                        </Button>
+                                    )}
+
+                                    <Button onClick={handlePlayInstructions} size="lg" className={`px-12 py-10 rounded-full text-2xl font-black shadow-xl border-4 border-white bg-gradient-to-r ${activeRules?.sensoryProfile === 'low-arousal' ? 'from-slate-400 to-slate-500' : selectedSkill.color} text-white`}>
                                         {isPlaying ? <Pause className="size-8 me-3" /> : <Play className="size-8 me-3" />}
                                         {isPlaying ? (language === 'ar' ? 'إيقاف' : 'Stop') : (language === 'ar' ? 'استمع' : 'Listen')}
                                     </Button>
 
-                                    <Button
-                                        onClick={() => {
-                                            playSound('success');
-                                            incrementProgress('life-skills');
-                                            speak(language === 'ar' ? 'أحسنتم! لقد تعلمت مهارة جديدة.' : 'Well done! You learned a new skill.', language);
-                                            setTimeout(() => navigateTo('child-mode'), 1500);
-                                        }}
-                                        size="lg"
-                                        className="bg-green-500 hover:bg-green-600 text-white text-2xl px-10 py-10 rounded-full shadow-xl border-4 border-white"
-                                    >
-                                        <CheckCircle2 className="size-8 me-3" />
-                                        {language === 'ar' ? 'تم الانتهاء' : 'Done'}
-                                    </Button>
+                                    {(journeyStep > -1 || activeRules?.instructionStyle === 'object-first') && (
+                                        <Button onClick={handleNextStep} size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xl px-10 py-10 rounded-full shadow-lg border-4 border-white">
+                                            {language === 'ar' ? 'التالي' : 'Next'}
+                                        </Button>
+                                    )}
 
-                                    <Button
-                                        onClick={() => {
-                                            playSound('tap');
-                                            setSelectedSkillId(null);
-                                            setIsPlaying(false);
-                                            stopSpeaking();
-                                        }}
-                                        variant="outline"
-                                        size="lg"
-                                        className="bg-white text-2xl px-10 py-10 rounded-full shadow-xl border-4 border-gray-100 text-gray-600"
-                                    >
+                                    {journeyStep === -1 && (
+                                        <Button onClick={() => { playSound('success'); incrementProgress('life-skills'); speak(language === 'ar' ? 'أحسنتم! لقد تعلمت مهارة جديدة.' : 'Well done! You learned a new skill.', language); setTimeout(() => navigateTo('child-mode'), 1500); }} size="lg" className="bg-green-500 hover:bg-green-600 text-white text-2xl px-10 py-10 rounded-full shadow-xl border-4 border-white">
+                                            <CheckCircle2 className="size-8 me-3" />
+                                            {language === 'ar' ? 'تم الانتهاء' : 'Done'}
+                                        </Button>
+                                    )}
+
+                                    <Button onClick={() => { playSound('tap'); setSelectedSkillId(null); setIsPlaying(false); stopSpeaking(); setJourneyStep(-1); }} variant="outline" size="lg" className="bg-white text-2xl px-10 py-10 rounded-full shadow-xl border-4 border-gray-100 text-gray-600">
                                         <RotateCcw className="size-8 me-3" />
                                         {language === 'ar' ? 'العودة' : 'Back'}
                                     </Button>

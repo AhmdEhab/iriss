@@ -102,6 +102,11 @@ interface Translations {
   continue: string;
   loading: string;
   settings: string;
+
+  // Transition Screens
+  selectingIQ: string;
+  configuringJourney: string;
+  pleaseWait: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -196,7 +201,12 @@ const translations: Record<Language, Translations> = {
     cancel: 'إلغاء',
     continue: 'متابعة',
     loading: 'جاري التحميل...',
-    settings: 'الإعدادات'
+    settings: 'الإعدادات',
+
+    // Transition Screens
+    selectingIQ: 'جارٍ اختيار اختبار الذكاء المناسب...',
+    configuringJourney: 'جارٍ تهيئة طريقة الشرح المناسبة...',
+    pleaseWait: 'لحظة من فضلك...'
   },
   en: {
     welcome: 'Welcome',
@@ -289,7 +299,12 @@ const translations: Record<Language, Translations> = {
     cancel: 'Cancel',
     continue: 'Continue',
     loading: 'Loading...',
-    settings: 'Settings'
+    settings: 'Settings',
+
+    // Transition Screens
+    selectingIQ: 'Selecting appropriate IQ test...',
+    configuringJourney: 'Configuring personalized learning path...',
+    pleaseWait: 'Please wait...'
   }
 };
 

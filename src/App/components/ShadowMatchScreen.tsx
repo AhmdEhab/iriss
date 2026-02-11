@@ -29,7 +29,7 @@ const ITEMS: Item[] = [
 ];
 
 export function ShadowMatchScreen() {
-    const { navigateTo, unlockBadge, incrementProgress } = useApp();
+    const { navigateTo, unlockBadge, incrementProgress, activeRules } = useApp();
     const { playSound, speak } = useAudio();
     const { t, language } = useLanguage();
 
@@ -56,7 +56,15 @@ export function ShadowMatchScreen() {
         setSelectedId(null);
         setIsCorrect(null);
 
-        speak(language === 'ar' ? 'أين صاحب هذا الظل؟' : 'Where is the owner of this shadow?', language);
+        // Williams Syndrome Strategy: Use auditory hook (verbally name the object as a clue)
+        if (activeRules?.auditoryHook) {
+            const clue = language === 'ar'
+                ? `هيا نجد ${target.nameAr}`
+                : `Let's find the ${target.nameEn}`;
+            speak(clue, language);
+        } else {
+            speak(language === 'ar' ? 'أين صاحب هذا الظل؟' : 'Where is the owner of this shadow?', language);
+        }
     };
 
     const handleSelect = (item: Item) => {
@@ -122,7 +130,14 @@ export function ShadowMatchScreen() {
                                 <div className="absolute top-6 left-6 opacity-10">
                                     <HelpCircle className="size-20 text-indigo-500" />
                                 </div>
-                                <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 3, repeat: Infinity }} className="text-[15rem] filter brightness-0 opacity-80">
+                                <motion.div
+                                    animate={{
+                                        scale: [1, 1.05, 1],
+                                        filter: activeRules?.gestaltInstruction ? 'brightness(1.2)' : 'brightness(0)'
+                                    }}
+                                    transition={{ duration: 3, repeat: Infinity }}
+                                    className={`text-[15rem] transition-all duration-500 ${activeRules?.gestaltInstruction ? 'opacity-100' : 'opacity-80'}`}
+                                >
                                     {currentItem?.emoji}
                                 </motion.div>
                                 <div className="mt-8 bg-indigo-50 px-8 py-3 rounded-full">
@@ -135,7 +150,26 @@ export function ShadowMatchScreen() {
 
                         <div className="grid grid-cols-2 gap-6">
                             {options.map((option, idx) => (
-                                <motion.button key={option.id} initial={{ scale: 0, y: 50 }} animate={{ scale: 1, y: 0 }} transition={{ delay: idx * 0.1 }} onClick={() => handleSelect(option)} disabled={selectedId !== null} whileHover={{ scale: selectedId === null ? 1.05 : 1 }} whileTap={{ scale: 0.95 }} className={`aspect-square rounded-[3rem] border-8 shadow-xl relative flex items-center justify-center text-8xl transition-all duration-300 ${selectedId === option.id ? isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50' : selectedId === null ? 'border-white bg-white hover:border-indigo-200' : option.id === currentItem?.id ? 'border-green-500 bg-green-50' : 'border-gray-100 bg-gray-50 opacity-50'}`}>
+                                <motion.button
+                                    key={option.id}
+                                    initial={{ scale: 0, y: 50 }}
+                                    animate={{ scale: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.1 }}
+                                    onClick={() => handleSelect(option)}
+                                    disabled={selectedId !== null}
+                                    whileHover={{ scale: selectedId === null ? 1.05 : 1 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className={`
+                                        aspect-square rounded-[3rem] border-8 shadow-xl relative flex items-center justify-center text-8xl transition-all duration-300 
+                                        ${selectedId === option.id
+                                            ? isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'
+                                            : selectedId === null
+                                                ? 'border-white bg-white hover:border-indigo-200'
+                                                : option.id === currentItem?.id ? 'border-green-500 bg-green-50' : 'border-gray-100 bg-gray-50 opacity-50'
+                                        }
+                                        ${activeRules?.auditoryHook && selectedId === null && option.id === currentItem?.id ? 'ring-8 ring-indigo-500/20 ring-offset-4 animate-pulse' : ''}
+                                    `}
+                                >
                                     <span className={selectedId !== null && option.id !== currentItem?.id ? 'filter grayscale' : ''}>{option.emoji}</span>
                                     {selectedId === option.id && isCorrect && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute inset-0 flex items-center justify-center bg-green-500/20 rounded-[2.5rem]"><Check className="size-24 text-green-600" /></motion.div>}
                                 </motion.button>

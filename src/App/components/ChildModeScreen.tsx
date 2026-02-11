@@ -19,37 +19,51 @@ interface Level {
 }
 
 export function ChildModeScreen() {
-  const { navigateTo, childProfile, moduleProgress } = useApp();
+  const { navigateTo, childProfile, moduleProgress, activeRules, startDailySession } = useApp();
   const { speak, playSound } = useAudio();
   const { t, language, dir } = useLanguage();
 
   const categories = [
+    { id: 'recommended', name: language === 'ar' ? 'رحلتك المقترحة' : 'Your Journey', icon: '✨', color: 'from-amber-400 to-orange-500' },
     { id: 'basics', name: t.basics, icon: '🧩', color: 'from-blue-500 to-cyan-500' },
     { id: 'world', name: t.world, icon: '🌍', color: 'from-green-500 to-emerald-500' },
     { id: 'creative', name: t.creative, icon: '🎨', color: 'from-purple-500 to-pink-500' },
   ];
 
-  const levels: Level[] = [
-    // Basics
-    { id: 'letters', name: t.letters, icon: '📝', color: 'from-blue-400 to-cyan-400', locked: false, progress: moduleProgress['letters'] || 0, category: 'basics' },
-    { id: 'numbers', name: t.numbers, icon: '🔢', color: 'from-purple-400 to-pink-400', locked: false, progress: moduleProgress['numbers'] || 0, category: 'basics' },
-    { id: 'shapes', name: t.shapes, icon: '🔺', color: 'from-yellow-400 to-amber-500', locked: false, progress: moduleProgress['shapes'] || 0, category: 'basics' },
-    { id: 'colors', name: t.colors, icon: '🎨', color: 'from-orange-400 to-yellow-400', locked: false, progress: moduleProgress['colors'] || 0, category: 'basics' },
+  const levels: Level[] = React.useMemo(() => {
+    const rawLevels: Level[] = [
+      // Basics
+      { id: 'letters', name: t.letters, icon: '📝', color: 'from-blue-400 to-cyan-400', locked: false, progress: moduleProgress['letters'] || 0, category: 'basics' },
+      { id: 'numbers', name: t.numbers, icon: '🔢', color: 'from-purple-400 to-pink-400', locked: false, progress: moduleProgress['numbers'] || 0, category: 'basics' },
+      { id: 'shapes', name: t.shapes, icon: '🔺', color: 'from-yellow-400 to-amber-500', locked: false, progress: moduleProgress['shapes'] || 0, category: 'basics' },
+      { id: 'colors', name: t.colors, icon: '🎨', color: 'from-orange-400 to-yellow-400', locked: false, progress: moduleProgress['colors'] || 0, category: 'basics' },
 
-    // World
-    { id: 'animals', name: t.animals, icon: '🦁', color: 'from-green-400 to-emerald-400', locked: false, progress: moduleProgress['animals'] || 0, category: 'world' },
-    { id: 'fruits', name: t.fruits, icon: '🍎', color: 'from-orange-400 to-red-500', locked: false, progress: moduleProgress['fruits'] || 0, category: 'world' },
-    { id: 'body-parts', name: t.bodyParts, icon: '🧒', color: 'from-blue-300 to-indigo-400', locked: false, progress: moduleProgress['body-parts'] || 0, category: 'world' },
-    { id: 'life-skills', name: t.lifeSkills, icon: '🏠', color: 'from-pink-400 to-rose-400', locked: false, progress: moduleProgress['life-skills'] || 0, category: 'world' },
-    { id: 'vehicles', name: t.vehicles, icon: '🚀', color: 'from-blue-400 to-indigo-500', locked: false, progress: moduleProgress['vehicles'] || 0, category: 'world' },
+      // World
+      { id: 'animals', name: t.animals, icon: '🦁', color: 'from-green-400 to-emerald-400', locked: false, progress: moduleProgress['animals'] || 0, category: 'world' },
+      { id: 'fruits', name: t.fruits, icon: '🍎', color: 'from-orange-400 to-red-500', locked: false, progress: moduleProgress['fruits'] || 0, category: 'world' },
+      { id: 'body-parts', name: t.bodyParts, icon: '🧒', color: 'from-blue-300 to-indigo-400', locked: false, progress: moduleProgress['body-parts'] || 0, category: 'world' },
+      { id: 'life-skills', name: t.lifeSkills, icon: '🏠', color: 'from-pink-400 to-rose-400', locked: false, progress: moduleProgress['life-skills'] || 0, category: 'world' },
+      { id: 'vehicles', name: t.vehicles, icon: '🚀', color: 'from-blue-400 to-indigo-500', locked: false, progress: moduleProgress['vehicles'] || 0, category: 'world' },
 
-    // Creative
-    { id: 'stories', name: t.stories, icon: '📚', color: 'from-indigo-400 to-purple-400', locked: false, progress: moduleProgress['stories'] || 0, category: 'creative' },
-    { id: 'drawing', name: t.drawing, icon: '🎨', color: 'from-pink-400 to-orange-400', locked: false, progress: moduleProgress['drawing'] || 0, category: 'creative' },
-    { id: 'emotions', name: t.emotions, icon: '😊', color: 'from-yellow-400 to-pink-500', locked: false, progress: moduleProgress['emotions'] || 0, category: 'creative' },
-    { id: 'songs', name: t.songs, icon: '🎵', color: 'from-cyan-400 to-blue-500', locked: false, progress: moduleProgress['songs'] || 0, category: 'creative' },
-    { id: 'games-hub', name: t.gamesHub, icon: '🎮', color: 'from-purple-400 to-pink-500', locked: false, progress: moduleProgress['games-hub'] || 0, category: 'creative' },
-  ];
+      // Creative
+      { id: 'stories', name: t.stories, icon: '📚', color: 'from-indigo-400 to-purple-400', locked: false, progress: moduleProgress['stories'] || 0, category: 'creative' },
+      { id: 'drawing', name: t.drawing, icon: '🎨', color: 'from-pink-400 to-orange-400', locked: false, progress: moduleProgress['drawing'] || 0, category: 'creative' },
+      { id: 'emotions', name: t.emotions, icon: '😊', color: 'from-yellow-400 to-pink-500', locked: false, progress: moduleProgress['emotions'] || 0, category: 'creative' },
+      { id: 'songs', name: t.songs, icon: '🎵', color: 'from-cyan-400 to-blue-500', locked: false, progress: moduleProgress['songs'] || 0, category: 'creative' },
+      { id: 'games-hub', name: t.gamesHub, icon: '🎮', color: 'from-purple-400 to-pink-500', locked: false, progress: moduleProgress['games-hub'] || 0, category: 'creative' },
+    ];
+
+    if (!activeRules?.moduleOrder) return rawLevels;
+
+    // Create a specialized "Recommended" category based on the scientific order
+    const orderedIds = activeRules.moduleOrder;
+    const recommendedLevels = orderedIds
+      .map(id => rawLevels.find(l => l.id === id))
+      .filter((l): l is Level => l !== undefined)
+      .map(l => ({ ...l, category: 'recommended' }));
+
+    return [...recommendedLevels, ...rawLevels];
+  }, [moduleProgress, t, activeRules, language]);
 
   const handleLevelClick = (level: Level) => {
     if (level.locked) {
@@ -127,10 +141,13 @@ export function ChildModeScreen() {
                 <Button
                   size="lg"
                   className="bg-white text-purple-600 hover:bg-purple-50 rounded-2xl px-10 py-8 text-2xl font-black shadow-2xl flex items-center gap-4 transition-all hover:scale-110 active:scale-95 h-20"
-                  onClick={() => { playSound('celebration'); speak(t.letters, language); navigateTo('letters'); }}
+                  onClick={() => {
+                    playSound('celebration');
+                    startDailySession();
+                  }}
                 >
-                  <Play className="size-8 fill-purple-600" />
-                  {language === 'ar' ? 'أكمل رحلتك' : 'Continue Journey'}
+                  <Sparkles className="size-8 text-amber-400 group-hover:rotate-12 transition-transform" />
+                  {language === 'ar' ? 'ابدأ مغامرة اليوم' : 'Start Daily Adventure'}
                 </Button>
               </div>
               <div className="hidden md:flex justify-center">

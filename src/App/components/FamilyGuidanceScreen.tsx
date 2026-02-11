@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Heart, GraduationCap, Brain, Activity, Book, Volume2 } from 'lucide-react';
+import { ArrowLeft, Heart, GraduationCap, Brain, Activity, Book, Volume2, MessageCircle } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAudio } from '../contexts/AudioContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface Article {
@@ -226,6 +227,10 @@ export function FamilyGuidanceScreen() {
                 </TabsTrigger>
               );
             })}
+            <TabsTrigger value="chat" className="text-lg py-4">
+              <MessageCircle className="size-5 me-2 text-pink-500" />
+              {language === 'ar' ? 'المساعد الذكي' : 'Assistant'}
+            </TabsTrigger>
           </TabsList>
 
           {categories.map((category) => (
@@ -262,6 +267,47 @@ export function FamilyGuidanceScreen() {
               </div>
             </TabsContent>
           ))}
+
+          <TabsContent value="chat">
+            <Card className="p-6 h-[600px] flex flex-col">
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b">
+                <div className="p-3 rounded-full bg-purple-100">
+                  <MessageCircle className="size-6 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">
+                    {language === 'ar' ? 'المساعد الذكي للأهل' : 'AI Parent Assistant'}
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    {language === 'ar' ? 'اسأل عن أي شيء يخص طفلك' : 'Ask anything about your child'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar">
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-2xl p-4 max-w-[80%]">
+                    <p className="text-gray-800">
+                      {language === 'ar'
+                        ? 'مرحباً! أنا هنا لمساعدتك في رحلة تربية طفلك. يمكنك سؤالي عن نصائح، أنشطة، أو كيفية التعامل مع مواقف معينة.'
+                        : 'Hello! I am here to help you on your parenting journey. You can ask me for tips, activities, or how to handle specific situations.'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  placeholder={language === 'ar' ? 'اكتب سؤالك هنا...' : 'Type your question here...'}
+                  className="flex-1"
+                />
+                <Button className="bg-purple-600 hover:bg-purple-700">
+                  {language === 'ar' ? 'إرسال' : 'Send'}
+                </Button>
+              </div>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

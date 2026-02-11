@@ -23,7 +23,7 @@ const BALLOON_COLORS = [
 ];
 
 export function BalloonPopScreen() {
-    const { navigateTo, unlockBadge, incrementProgress } = useApp();
+    const { navigateTo, unlockBadge, incrementProgress, activeRules } = useApp();
     const { playSound, speak } = useAudio();
     const { t, language } = useLanguage();
 
@@ -38,21 +38,26 @@ export function BalloonPopScreen() {
         const x = Math.random() * 80 + 10;
         const color = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
         const speed = 5 + Math.random() * 5;
-        const size = 60 + Math.random() * 40;
+
+        // Scale size based on syndrome rules (e.g., larger for Down Syndrome)
+        const baseSize = 60 + Math.random() * 40;
+        const size = baseSize * (activeRules?.gameAdjustments?.hitboxScaling || 1);
 
         const label = Math.random() > 0.5
             ? String.fromCharCode(65 + Math.floor(Math.random() * 26))
             : Math.floor(Math.random() * 10).toString();
 
         setBalloons(prev => [...prev, { id, x, color, speed, size, label }]);
-    }, []);
+    }, [activeRules]);
 
     useEffect(() => {
         let spawnInterval: NodeJS.Timeout;
         let timerInterval: NodeJS.Timeout;
 
         if (gameStarted && !isGameOver) {
-            spawnInterval = setInterval(spawnBalloon, 1000);
+            // Slower spawning for low-arousal sensory profiles
+            const spawnRate = activeRules?.sensoryProfile === 'low-arousal' ? 1500 : 1000;
+            spawnInterval = setInterval(spawnBalloon, spawnRate);
             timerInterval = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
@@ -68,10 +73,16 @@ export function BalloonPopScreen() {
             clearInterval(spawnInterval);
             clearInterval(timerInterval);
         };
-    }, [gameStarted, isGameOver, spawnBalloon]);
+    }, [gameStarted, isGameOver, spawnBalloon, activeRules]);
 
     const handlePop = (id: number, label: string) => {
-        playSound('tap');
+        // Different sound for different syndromes
+        if (activeRules?.gameAdjustments?.balloonPopStyle === 'dissolve') {
+            playSound('tap'); // Soft tap for dissolve
+        } else {
+            playSound('tap'); // Default pop
+        }
+
         setScore(prev => prev + 10);
         setBalloons(prev => prev.filter(b => b.id !== id));
         speak(label, language);
@@ -131,7 +142,11 @@ export function BalloonPopScreen() {
                             type="button"
                             initial={{ y: '110vh' }}
                             animate={{ y: '-20vh' }}
-                            exit={{ scale: 2, opacity: 0, transition: { duration: 0.2 } }}
+                            exit={
+                                activeRules?.gameAdjustments?.balloonPopStyle === 'dissolve'
+                                    ? { scale: 0.8, opacity: 0, transition: { duration: 0.5 } } // Dissolve for FXS
+                                    : { scale: 2, opacity: 0, transition: { duration: 0.2 } } // Pop
+                            }
                             transition={{ duration: balloon.speed, ease: 'linear' }}
                             onClick={() => handlePop(balloon.id, balloon.label)}
                             onAnimationComplete={() => {

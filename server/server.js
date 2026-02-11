@@ -3,15 +3,14 @@ const cors = require('cors');
 const sequelize = require('./config/database');
 const User = require('./models/User');
 const Post = require('./models/Post');
+const Booking = require('./models/Booking');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Helper for safe JSON parsing
 const parseSafely = (str, fallback) => {
     try {
         if (!str) return fallback;
@@ -22,12 +21,12 @@ const parseSafely = (str, fallback) => {
     }
 };
 
-// Routes
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Backend is running' });
 });
 
-// Login Endpoint
+
 app.post('/api/login', async (req, res) => {
     try {
         let { email, password } = req.body;
@@ -62,7 +61,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Create User (Example)
+
 app.post('/api/users', async (req, res) => {
     try {
         const data = req.body;
@@ -79,7 +78,6 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
-// Get Single User
 app.get('/api/users/:email', async (req, res) => {
     try {
         const user = await User.findOne({ where: { email: req.params.email } });
@@ -98,7 +96,7 @@ app.get('/api/users/:email', async (req, res) => {
     }
 });
 
-// Update User Data
+
 app.put('/api/users/:email', async (req, res) => {
     try {
         const data = req.body;
@@ -128,9 +126,7 @@ app.put('/api/users/:email', async (req, res) => {
     }
 });
 
-// --- Post Routes ---
 
-// Get All Posts
 app.get('/api/posts', async (req, res) => {
     try {
         const posts = await Post.findAll({ order: [['createdAt', 'DESC']] });
@@ -140,7 +136,7 @@ app.get('/api/posts', async (req, res) => {
     }
 });
 
-// Create Post
+
 app.post('/api/posts', async (req, res) => {
     try {
         const post = await Post.create(req.body);
@@ -150,7 +146,7 @@ app.post('/api/posts', async (req, res) => {
     }
 });
 
-// Like Post
+
 app.put('/api/posts/:id/like', async (req, res) => {
     try {
         const post = await Post.findByPk(req.params.id);
@@ -163,7 +159,32 @@ app.put('/api/posts/:id/like', async (req, res) => {
     }
 });
 
-// Get Users (Example)
+// --- Booking Routes ---
+
+// Create Booking
+app.post('/api/bookings', async (req, res) => {
+    try {
+        const booking = await Booking.create(req.body);
+        res.status(201).json(booking);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Get Bookings for User
+app.get('/api/bookings/:email', async (req, res) => {
+    try {
+        const bookings = await Booking.findAll({
+            where: { parentEmail: req.params.email },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(bookings);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 app.get('/api/users', async (req, res) => {
     try {
         const users = await User.findAll();
@@ -173,7 +194,7 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-// Sync Database and Start Server
+
 sequelize.sync({ alter: true }).then(() => {
     console.log('Database synced successfully');
     app.listen(PORT, () => {

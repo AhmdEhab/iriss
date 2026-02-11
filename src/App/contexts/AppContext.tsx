@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { SYNDROME_RULES, getRulesForCondition, SyndromeRuleSet } from '../constants/syndromeRules';
+import { CognitiveEngine, LearningSession, PerformanceSnapshot } from '../logic/CognitiveEngine';
+import { useLanguage } from './LanguageContext';
 
 export type Screen =
   | 'splash'
@@ -28,7 +31,9 @@ export type Screen =
   | 'games-hub'
   | 'family-guidance'
   | 'community-sessions'
-  | 'parent-settings';
+  | 'parent-settings'
+  | 'transition'
+  | 'teaching-demo';
 
 export type Condition = 'down-syndrome' | 'autism' | 'williams' | 'fragile-x' | 'other';
 
@@ -55,6 +60,7 @@ export interface ChildProfile {
   fatherJob: string;
   phone: string;
   condition: Condition;
+  syndrome?: Condition; // Alias for condition to avoid type errors in new modules
   email?: string;
   dailyTimeSpent?: Record<string, number>; // date string -> minutes
 }
@@ -86,6 +92,12 @@ export interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: string;
+}
+
+export interface TransitionState {
+  message: string;
+  nextScreen: Screen;
+  duration: number;
 }
 
 
@@ -120,6 +132,15 @@ interface AppContextType {
 
   parentChatHistory: ChatMessage[];
   sendParentMessage: (text: string) => Promise<void>;
+  activeRules: import('../constants/syndromeRules').SyndromeRuleSet;
+
+  transitionState: TransitionState;
+  startTransition: (message: string, nextScreen: Screen, duration?: number) => void;
+
+  // Integrated Cognitive Program
+  currentSession: LearningSession | null;
+  startDailySession: () => void;
+  reportPerformance: (itemId: string, repeated: boolean, completed: boolean) => void;
 }
 
 
@@ -148,6 +169,7 @@ export interface IrisProfile {
 
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { language } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [childProfile, setChildProfile] = useState<ChildProfile | null>(null);
   const [assessmentResult, _setAssessmentResult] = useState<AssessmentResult | null>(null);
@@ -158,6 +180,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [irisProfile, setIrisProfile] = useState<IrisProfile | null>(null);
   const [parentChatHistory, setParentChatHistory] = useState<ChatMessage[]>([]);
+  const [transitionState, setTransitionState] = useState<TransitionState>({
+    message: '',
+    nextScreen: 'splash',
+    duration: 3000
+  });
+
+  // Cognitive Program State
+  const [currentSession, setCurrentSession] = useState<LearningSession | null>(null);
+  const [performanceHistory, setPerformanceHistory] = useState<PerformanceSnapshot[]>([]);
+  const [dynamicRuleAdaptions, setDynamicRuleAdaptions] = useState<Partial<SyndromeRuleSet>>({});
+
+  const activeRules = useMemo(() => {
+    const baseRules = getRulesForCondition(childProfile?.condition);
+    return { ...baseRules, ...dynamicRuleAdaptions };
+  }, [childProfile?.condition, dynamicRuleAdaptions]);
 
   const reconstructIrisProfile = useCallback(async () => {
     if (!childProfile || !assessmentResult) return;
@@ -249,7 +286,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }),
       });
       if (response.ok) {
-        setChildProfile(profile as ChildProfile);
+        const fullProfile = { ...profile, syndrome: profile.syndrome || profile.condition };
+        setChildProfile(fullProfile as ChildProfile);
         setIsReturningUser(true);
         return true;
       }
@@ -274,6 +312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           name: data.name,
           age: data.age,
           condition: data.condition,
+          syndrome: data.condition, // Ensure alias is set for legacy accounts
           gender: data.gender || 'male',
           motherName: data.motherName || '',
           fatherName: data.fatherName || '',
@@ -464,7 +503,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [childProfile, irisProfile]);
 
+  const startTransition = useCallback((message: string, nextScreen: Screen, duration: number = 3000) => {
+    setTransitionState({ message, nextScreen, duration });
+    setCurrentScreen('transition');
+    setTimeout(() => {
+      setCurrentScreen(nextScreen);
+    }, duration);
+  }, []);
 
+  const startDailySession = useCallback(() => {
+    if (!childProfile) return;
+    const session = CognitiveEngine.generateSession(
+      childProfile.condition,
+      moduleProgress,
+      performanceHistory
+    );
+    setCurrentSession(session);
+    startTransition(
+      language === 'ar' ? 'نحن نجهز لك مغامرة مخصصة...' : 'Preparing your custom adventure...',
+      'animals', // Transition to first module in the session (simplified)
+      2500
+    );
+  }, [childProfile, moduleProgress, performanceHistory, startTransition, language]);
+
+  const reportPerformance = useCallback((itemId: string, repeated: boolean, completed: boolean) => {
+    const snapshot: PerformanceSnapshot = {
+      itemId,
+      repeated,
+      completed,
+      timestamp: Date.now()
+    };
+
+    setPerformanceHistory(prev => {
+      const newHistory = [...prev, snapshot].slice(-100); // Keep last 100
+
+      // Evaluate and adapt rules if enough data exists
+      if (newHistory.length % 5 === 0) {
+        const adaptions = CognitiveEngine.evaluateAndAdapt(activeRules, newHistory);
+        if (Object.keys(adaptions).length > 0) {
+          console.log("Pedagogical Engine: Adapting rules", adaptions);
+          setDynamicRuleAdaptions(prev => ({ ...prev, ...adaptions }));
+        }
+      }
+      return newHistory;
+    });
+
+    if (completed) {
+      incrementProgress(itemId); // Use internal ID for granular tracking
+    }
+  }, [activeRules, incrementProgress]);
 
   return (
     <AppContext.Provider
@@ -496,7 +583,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getAiRecommendations,
         parentChatHistory,
 
-        sendParentMessage
+        sendParentMessage,
+        activeRules,
+        transitionState,
+        startTransition,
+
+        currentSession,
+        startDailySession,
+        reportPerformance
       }}
 
 

@@ -136,6 +136,12 @@ export function CommunitySessionsScreen() {
   const [selectedSpecialist, setSelectedSpecialist] = useState<Specialist | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
 
+  // State for booking form
+  const [bookingTime, setBookingTime] = useState('');
+  const [childName, setChildName] = useState(childProfile?.name || '');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [isBooking, setIsBooking] = useState(false);
+
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
@@ -164,19 +170,51 @@ export function CommunitySessionsScreen() {
     navigateTo('parent-dashboard');
   };
 
+
   const handleBookSession = (specialist: Specialist) => {
     setSelectedSpecialist(specialist);
+    setBookingTime(specialist.availability[0]); // Default to first slot
     setBookingOpen(true);
     playSound('tap');
   };
 
-  const handleConfirmBooking = () => {
-    playSound('success');
-    setBookingOpen(false);
-    alert(language === 'ar'
-      ? 'تم حجز الجلسة بنجاح! سنرسل لك رسالة تأكيد قريباً.'
-      : 'Session booked successfully! We will send you a confirmation message soon.'
-    );
+  const handleConfirmBooking = async () => {
+    if (!selectedSpecialist || !childProfile) return;
+
+    setIsBooking(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specialistId: selectedSpecialist.id,
+          specialistName: selectedSpecialist.name,
+          childName: childName,
+          parentEmail: childProfile.email,
+          date: new Date().toLocaleDateString(), // Simplification: assume today/soon
+          time: bookingTime,
+          notes: bookingNotes,
+          status: 'pending'
+        })
+      });
+
+      if (response.ok) {
+        playSound('success');
+        setBookingOpen(false);
+        speak(language === 'ar'
+          ? 'تم حجز الجلسة بنجاح! سنرسل لك التفاصيل قريباً.'
+          : 'Session booked successfully! We will send you details soon.',
+          language);
+      } else {
+        throw new Error('Booking failed');
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      playSound('error');
+      alert('Failed to book session. Please try again.');
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   const handlePublishPost = async () => {
@@ -498,9 +536,13 @@ export function CommunitySessionsScreen() {
                   <label className="block text-sm font-medium mb-1">
                     {language === 'ar' ? 'اختر الموعد' : 'Select Time'}
                   </label>
-                  <select className="w-full border rounded-lg p-2">
+                  <select
+                    className="w-full border rounded-lg p-2"
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                  >
                     {selectedSpecialist.availability.map((time, i) => (
-                      <option key={i}>{time}</option>
+                      <option key={i} value={time}>{time}</option>
                     ))}
                   </select>
                 </div>
@@ -509,7 +551,11 @@ export function CommunitySessionsScreen() {
                   <label className="block text-sm font-medium mb-1">
                     {language === 'ar' ? 'اسم الطفل' : 'Child Name'}
                   </label>
-                  <Input placeholder={language === 'ar' ? 'أدخل الاسم' : 'Enter name'} />
+                  <Input
+                    placeholder={language === 'ar' ? 'أدخل الاسم' : 'Enter name'}
+                    value={childName}
+                    onChange={(e) => setChildName(e.target.value)}
+                  />
                 </div>
 
                 <div>
@@ -522,14 +568,17 @@ export function CommunitySessionsScreen() {
                       : 'Any information you would like to share...'
                     }
                     rows={3}
+                    value={bookingNotes}
+                    onChange={(e) => setBookingNotes(e.target.value)}
                   />
                 </div>
 
                 <Button
                   onClick={handleConfirmBooking}
+                  disabled={isBooking}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-lg py-6"
                 >
-                  {language === 'ar' ? 'تأكيد الحجز' : 'Confirm Booking'}
+                  {isBooking ? '...' : (language === 'ar' ? 'تأكيد الحجز' : 'Confirm Booking')}
                 </Button>
               </div>
             </div>
